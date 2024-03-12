@@ -40,21 +40,21 @@ class DBClient {
     return newUser;
   }
 
-  async getUser(email) {
-    const user = await this.db.collection('users').findOne({ email });
-    return user;
-  }
-
+  
   async getUserById(id) {
     const objectId = new mongo.ObjectID(id);
     const user = await this.db.collection('users').findOne({ _id: objectId });
     return user;
   }
-
   async userExists(email) {
     const user = await this.getUser(email);
     return Boolean(user);
   }
+  async getUser(email) {
+    const user = await this.db.collection('users').findOne({ email });
+    return user;
+  }
+
 }
 
 const dbClient = new DBClient();
