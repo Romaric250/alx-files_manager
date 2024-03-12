@@ -1,32 +1,59 @@
+#!/usr/bin/node
+
+const { pwdHashed } = require('./utils');
+const mongo = require('mongodb');
 const { MongoClient } = require('mongodb');
 
 class DBClient {
   constructor() {
     const host = process.env.DB_HOST || 'localhost';
-    const port = process.env.DB_PORT || '27017';
-    const database = process.env.DB_DATABASE || 'files_manager';
-    const url = `mongodb://${host}:${port}`;
+    const port = process.env.DB_PORT || 27017;
+    const dbName = process.env.DB_DATABASE || 'files_manager';
+    const dbUrl = `mongodb://${host}:${port}`;
 
-    this.client = new MongoClient(url);
-    this.client.connect();
+    this.isConnected = false;
+    this.mongoClient = new MongoClient(dbUrl, { useUnifiedTopology: true });
+    this.mongoClient.connect().then(() => {
+      this.isConnected = true;
+    }).catch((err) => console.log(err.message));
 
-    this.db = this.client.db(database);
+    this.db = this.mongoClient.db(dbName);
   }
 
   isAlive() {
-    return this.client.isConnected();
+    return this.isConnected;
   }
 
   async nbUsers() {
-    const collection = this.db.collection('users');
-    const count = await collection.countDocuments();
-    return count;
+    const userCount = await this.db.collection('users').countDocuments();
+    return userCount;
   }
 
   async nbFiles() {
-    const collection = this.db.collection('files');
-    const count = await collection.countDocuments();
-    return count;
+    const fileCount = await this.db.collection('files').countDocuments();
+    return fileCount;
+  }
+
+  async createUser(email, password) {
+    const hashedPassword = pwdHashed(password);
+    const newUser = await this.db.collection('users').insertOne({ email, password: hashedPassword });
+    return newUser;
+  }
+
+  async getUser(email) {
+    const user = await this.db.collection('users').findOne({ email });
+    return user;
+  }
+
+  async getUserById(id) {
+    const objectId = new mongo.ObjectID(id);
+    const user = await this.db.collection('users').findOne({ _id: objectId });
+    return user;
+  }
+
+  async userExists(email) {
+    const user = await this.getUser(email);
+    return Boolean(user);
   }
 }
 
