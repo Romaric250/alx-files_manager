@@ -68,6 +68,26 @@ class FilesController {
       isPublic,
       parentId,
     });
+
+  }
+
+  static async putPublish(req, res) {
+    const token = req.headers['x-token'];
+    const userId = await redisClient.get(`auth_${token}`);
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const fileId = req.params.id;
+    const file = await dbClient.getFileById(fileId);
+    if (!file || file.userId !== userId) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+
+    await dbClient.updateFileById(fileId, { isPublic: true });
+    res.status(200).json({ id: fileId, isPublic: true });
   }
 }
 
