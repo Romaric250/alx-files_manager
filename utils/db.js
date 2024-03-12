@@ -1,61 +1,32 @@
-#!/usr/bin/node
-
-const { pwdHashed } = require('./utils');
-const mongo = require('mongodb');
-const { MongoClient } = require('mongodb');
+import { MongoClient } from 'mongodb';
 
 class DBClient {
   constructor() {
     const host = process.env.DB_HOST || 'localhost';
     const port = process.env.DB_PORT || 27017;
-    const dbName = process.env.DB_DATABASE || 'files_manager';
-    const dbUrl = `mongodb://${host}:${port}`;
+    const database = process.env.DB_DATABASE || 'files_manager';
+    const url = `mongodb://${host}:${port}`;
 
-    this.isConnected = false;
-    this.mongoClient = new MongoClient(dbUrl, { useUnifiedTopology: true });
-    this.mongoClient.connect().then(() => {
-      this.isConnected = true;
-    }).catch((err) => console.log(err.message));
-
-    this.db = this.mongoClient.db(dbName);
+    MongoClient.connect(url, { useUnifiedTopology: true }, (err, client) => {
+      if (err) {
+        this.dbClient = false;
+      } else {
+        this.dbClient = client.db(database);
+      }
+    });
   }
 
   isAlive() {
-    return this.isConnected;
+    return !!this.dbClient;
   }
 
   async nbUsers() {
-    const userCount = await this.db.collection('users').countDocuments();
-    return userCount;
+    return this.dbClient.collection('users').countDocuments();
   }
 
   async nbFiles() {
-    const fileCount = await this.db.collection('files').countDocuments();
-    return fileCount;
+    return this.dbClient.collection('files').countDocuments();
   }
-
-  async createUser(email, password) {
-    const hashedPassword = pwdHashed(password);
-    const newUser = await this.db.collection('users').insertOne({ email, password: hashedPassword });
-    return newUser;
-  }
-
-  
-  async getUserById(id) {
-    const objectId = new mongo.ObjectID(id);
-    const user = await this.db.collection('users').findOne({ _id: objectId });
-    return user;
-  }
-  async userExists(email) {
-    const user = await this.getUser(email);
-    return Boolean(user);
-  }
-  async getUser(email) {
-    const user = await this.db.collection('users').findOne({ email });
-    return user;
-  }
-
 }
 
-const dbClient = new DBClient();
-module.exports = dbClient;
+export default new DBClient();
